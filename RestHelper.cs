@@ -3,8 +3,12 @@ using RestSharp;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Dapper;
+using System.Data;
+using System.Data.SqlClient;
 
 namespace OptionChain
 {
@@ -28,11 +32,69 @@ namespace OptionChain
             }
             return opationchainResponse;
         }
+        public async Task<CullPutDif> CalculatePCR(OpationchainResponse opationchainResponse)
+        {
+            var records = opationchainResponse.records;
+            double currentPrice = Math.Round(records.underlyingValue / 100, 0) * 100;
+            var price = opationchainResponse.filtered.data.Where(x => x.strikePrice == currentPrice).FirstOrDefault();
+            var priceAbove = opationchainResponse.filtered.data.Where(x => x.strikePrice > currentPrice).Take(5).ToList();
+            var priceBelow = opationchainResponse.filtered.data.Where(x => x.strikePrice < currentPrice).OrderByDescending(x => x.strikePrice).Take(5).ToList();
+            long SumOfPutIO = 0;
+            long SumOfCALLIO = 0;
+            SumOfPutIO = SumOfPutIO + (price.PE.changeinOpenInterest);
+            SumOfCALLIO = SumOfCALLIO + (price.CE.changeinOpenInterest);
+            for (int i = 0; i < 4; i++)
+            {
+                var pa = priceAbove[i];
+                var pb = priceBelow[i];
+                SumOfPutIO = SumOfPutIO + (pa.PE.changeinOpenInterest + pb.PE.changeinOpenInterest);
+                SumOfCALLIO = SumOfCALLIO + (pa.CE.changeinOpenInterest + pb.CE.changeinOpenInterest);
+            }
+            long diff = (SumOfPutIO - SumOfCALLIO);
+            CullPutDif data = new CullPutDif
+            {
+                strikePrice = currentPrice,
+                time = Convert.ToDateTime(records.timestamp).ToString("dd-MM-yyyy hh:mm"),
+                call = SumOfCALLIO,
+                put = SumOfPutIO,
+                diff = diff,
+                Name = "BankNifty"
+            };
+            return data;
+        }
+        public async Task<int> InsertData(CullPutDif diff)
+        {
+            int result = 0;
+            try
+            {
+                using (IDbConnection db = new SqlConnection("Data Source=WS-RAJESH\\SQLEXPRESS;Initial Catalog=MetaTrader;Integrated Security=True"))
+                {
+                    string insertQuery = @"INSERT INTO [dbo].[CallPutDifference]([Name], [Price], [SumOfPut], [SumOfCall], [Difference], [DateTime]) VALUES (@Name, @strikePrice, @put, @call, @diff, @time)";
 
-        
+                    result = await db.ExecuteAsync(insertQuery, new
+                    {
+                        diff.Name,
+                        diff.strikePrice,
+                        diff.put,               
+                        diff.call,
+                        diff.diff,
+                        time = Convert.ToDateTime(diff.time)
+                    }); ;
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+            return result;
+        }
+
+
     }
     public interface IRestHelper
     {
         Task<OpationchainResponse> GetOpationchain(string IndexName);
+        Task<CullPutDif> CalculatePCR(OpationchainResponse opationchainResponse);
+        Task<int> InsertData(CullPutDif diff);
     }
 }
