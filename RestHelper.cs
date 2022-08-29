@@ -76,7 +76,7 @@ namespace OptionChain
             int result = 0;
             try
             {
-                using (IDbConnection db = new SqlConnection("Data Source=SQL8004.site4now.net;Initial Catalog=db_a8c0de_metatrader;User Id=db_a8c0de_metatrader_admin;Password=Rajesh_12345"))
+                using (IDbConnection db = new SqlConnection("Data Source=SQL8004.site4now.net;Initial Catalog=db_a8c0de_metatrader;User Id=db_a8c0de_metatrader_admin;Password=******"))
                 {
                     string insertQuery = @"INSERT INTO [dbo].[CallPutDifference]([Name], [Price], [SumOfPut], [SumOfCall], [Difference], [DateTime]) VALUES (@Name, @strikePrice, @put, @call, @diff, @time)";
 
