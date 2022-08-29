@@ -26,7 +26,7 @@ namespace OptionChain
             var res = await restHelper.GetOpationchain("BANKNIFTY");
             var diff = await restHelper.CalculatePCR(res);
             await restHelper.InsertData(diff);
-            Console.WriteLine("Time : {0} call : {1} put : {2} diff : {3}", diff.time, diff.call, diff.call, diff.diff);
+            Console.WriteLine($"Time : {diff.diff}  diff : {diff.time} CurrentTime :{DateTime.Now.ToString("dd-MM-yyyy hh:mm")} pcr:{diff.pcr}");
         }
     }
 }

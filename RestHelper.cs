@@ -34,11 +34,18 @@ namespace OptionChain
         }
         public async Task<CullPutDif> CalculatePCR(OpationchainResponse opationchainResponse)
         {
+            int record = DateTime.Now.DayOfWeek.ToString() switch { 
+                "Monday" =>5,
+                "Tuesday"=>4,
+                "Wednesday" => 3,
+                "Thursday" => 2,
+                "Friday"=>5
+            };
             var records = opationchainResponse.records;
             double currentPrice = Math.Round(records.underlyingValue / 100, 0) * 100;
             var price = opationchainResponse.filtered.data.Where(x => x.strikePrice == currentPrice).FirstOrDefault();
-            var priceAbove = opationchainResponse.filtered.data.Where(x => x.strikePrice > currentPrice).Take(5).ToList();
-            var priceBelow = opationchainResponse.filtered.data.Where(x => x.strikePrice < currentPrice).OrderByDescending(x => x.strikePrice).Take(5).ToList();
+            var priceAbove = opationchainResponse.filtered.data.Where(x => x.strikePrice > currentPrice).Take(record).ToList();
+            var priceBelow = opationchainResponse.filtered.data.Where(x => x.strikePrice < currentPrice).OrderByDescending(x => x.strikePrice).Take(record).ToList();
             long SumOfPutIO = 0;
             long SumOfCALLIO = 0;
             SumOfPutIO = SumOfPutIO + (price.PE.changeinOpenInterest);
@@ -48,9 +55,10 @@ namespace OptionChain
                 var pa = priceAbove[i];
                 var pb = priceBelow[i];
                 SumOfPutIO = SumOfPutIO + (pa.PE.changeinOpenInterest + pb.PE.changeinOpenInterest);
-                SumOfCALLIO = SumOfCALLIO + (pa.CE.changeinOpenInterest + pb.CE.changeinOpenInterest);
+                SumOfCALLIO = SumOfCALLIO + (pa.CE.changeinOpenInterest +  pb.CE.changeinOpenInterest);
             }
             long diff = (SumOfPutIO - SumOfCALLIO);
+            decimal pcr =  (Convert.ToDecimal(SumOfPutIO) / Convert.ToDecimal(SumOfCALLIO));
             CullPutDif data = new CullPutDif
             {
                 strikePrice = currentPrice,
@@ -58,7 +66,8 @@ namespace OptionChain
                 call = SumOfCALLIO,
                 put = SumOfPutIO,
                 diff = diff,
-                Name = "BankNifty"
+                Name = "BankNifty",
+                pcr = Math.Round(pcr, 2)
             };
             return data;
         }
@@ -67,7 +76,7 @@ namespace OptionChain
             int result = 0;
             try
             {
-                using (IDbConnection db = new SqlConnection("Data Source=WS-RAJESH\\SQLEXPRESS;Initial Catalog=MetaTrader;Integrated Security=True"))
+                using (IDbConnection db = new SqlConnection("Data Source=SQL8004.site4now.net;Initial Catalog=db_a8c0de_metatrader;User Id=db_a8c0de_metatrader_admin;Password=Rajesh_12345"))
                 {
                     string insertQuery = @"INSERT INTO [dbo].[CallPutDifference]([Name], [Price], [SumOfPut], [SumOfCall], [Difference], [DateTime]) VALUES (@Name, @strikePrice, @put, @call, @diff, @time)";
 

@@ -12,5 +12,6 @@ namespace OptionChain.Model.Response
         public long call { get; set; }
         public long put { get; set; }
         public long diff { get; set; }
+        public decimal pcr { get; set; }
     }
 }
